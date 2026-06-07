@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+
+# generated merge output (the "4th file")
+merged.py
+merged_*.py
+merged_view.html
