@@ -122,15 +122,20 @@ def main(argv):
     current = diff_core.read_lines(current_path)
     incoming = diff_core.read_lines(incoming_path)
     hunks = diff_core.compute_hunks(current, incoming)
-    total = sum(1 for h in hunks if h["type"] == "conflict")
+    total = sum(1 for h in hunks
+                if h["type"] == "conflict" and not diff_core.is_whitespace_only(h))
 
-    if total == 0:
+    any_conflict = any(h["type"] == "conflict" for h in hunks)
+    if not any_conflict:
         print("Files are identical — nothing to merge.")
         diff_core.write_lines(out_path, current)
         print("Wrote %s" % out_path)
         return 0
 
-    print("%d conflict(s) to resolve.\n" % total)
+    if total == 0:
+        print("Only blank-line differences — auto-resolved, nothing to approve.")
+    else:
+        print("%d conflict(s) to resolve.\n" % total)
     out = []
     idx = 0
     cur_pos = 0   # line index into current
@@ -140,6 +145,12 @@ def main(argv):
             out.extend(h["lines"])
             cur_pos += len(h["lines"])
             inc_pos += len(h["lines"])
+            continue
+        if diff_core.is_whitespace_only(h):
+            # Blank-line-only change: resolve silently with the safe default.
+            out.extend(diff_core.resolve(h, diff_core.default_choice(h)))
+            cur_pos += len(h["current"])
+            inc_pos += len(h["incoming"])
             continue
         idx += 1
         cur_ctx = diff_core.enclosing_def(current, cur_pos)

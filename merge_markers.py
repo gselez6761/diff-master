@@ -37,10 +37,18 @@ def build_markers(current_path, incoming_path, out_path):
     hunks = diff_core.compute_hunks(current, incoming)
 
     out = []
+    auto = 0
+    marked = []
     for h in hunks:
         if h["type"] == "equal":
             out.extend(h["lines"])
             continue
+        if diff_core.is_whitespace_only(h):
+            # Blank-line-only change: resolve silently, no marker emitted.
+            out.extend(diff_core.resolve(h, diff_core.default_choice(h)))
+            auto += 1
+            continue
+        marked.append(h)
         out.append(CUR)
         out.extend(h["current"])
         out.append(MID)
@@ -48,10 +56,12 @@ def build_markers(current_path, incoming_path, out_path):
         out.append(INC)
 
     diff_core.write_lines(out_path, out)
-    s = diff_core.stats(hunks)
+    s = diff_core.stats(marked)
     print("Wrote %s" % out_path)
     print("  %d conflict block(s)  (added %d, removed %d, changed %d)"
           % (s["conflicts"], s["added"], s["removed"], s["changed"]))
+    if auto:
+        print("  %d blank-line change(s) auto-resolved." % auto)
     if s["conflicts"]:
         print("Edit the file to keep the side(s) you want, then run:")
         print("  python merge_markers.py --clean %s" % out_path)

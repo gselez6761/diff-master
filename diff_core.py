@@ -61,6 +61,16 @@ def default_choice(hunk):
     return "current" if hunk["kind"] == "removed" else "incoming"
 
 
+def is_whitespace_only(hunk):
+    """True if a conflict only involves blank/whitespace lines on both sides.
+
+    Used to auto-resolve trivial blank-line additions/removals so the user
+    isn't asked to approve them. Combined with default_choice (which keeps
+    CURRENT for 'removed'), nothing meaningful is lost.
+    """
+    return all(not s.strip() for s in hunk["current"] + hunk["incoming"])
+
+
 def resolve(hunk, choice):
     """Turn a (hunk, choice) into the lines that go in the merged output.
 
